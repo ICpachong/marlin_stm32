@@ -33,7 +33,7 @@
 // Servos
 //
 
-#define SERVO0_PIN       0xB9// 0xBE
+#define SERVO0_PIN       0xBD// 0xBE
 
 //#define SERVO1_PIN          6
 //#define SERVO2_PIN          5
@@ -54,10 +54,10 @@
 #define Z_MAX_PIN          // 0xB8//0xE0
 
 #if ENABLED(BLTOUCH)
-#define Z_MIN_PIN           0xE4
+#define Z_MIN_PIN          0xAB//0xE1
 
 #else
-#define Z_MIN_PIN            0xB8//0xE1
+#define Z_MIN_PIN            0xE4// 0xB8//0xE1
 
 #endif
 
@@ -220,12 +220,12 @@
 #define HEATER_0_PIN     0xD3
 
 #if EXTRUDERS > 1
-#define HEATER_1_PIN     0xD1
+#define HEATER_1_PIN    0xA0// 0xD1
 #endif
 #define FAN_PIN         0xA2
 #define FAN1_PIN        0xA3
 #define FAN2_PIN        0xA1
-#define FAN3_PIN        0xA0
+#define FAN3_PIN        0xD1//0xA0
 #define FAN4_PIN        0xDA
 
 #define HEATER_BED_PIN 0xD0

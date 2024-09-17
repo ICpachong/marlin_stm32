@@ -173,7 +173,7 @@ int16_t Temperature::current_temperature_raw[HOTENDS] = { 0 },
   float Temperature::redundant_temperature = 0.0;
 #endif
 
-volatile bool Temperature::temp_meas_ready = false;
+volatile bool Temperature::temp_meas_ready =   false;
 
 #if ENABLED(PIDTEMP)
   float Temperature::temp_iState[HOTENDS] = { 0 },
@@ -327,6 +327,7 @@ uint8_t Temperature::soft_pwm_amount[HOTENDS];
     while (wait_for_heatup) {
 
       const millis_t ms = millis();
+	  watchdog_reset();
 
       if (temp_meas_ready) { // temp sample ready
         updateTemperaturesFromRawValues();
@@ -576,8 +577,6 @@ int Temperature::getHeaterPower(const int heater) {
 // Temperature Error Handlers
 //
 void Temperature::_temp_error(const int8_t e, const char * const serial_msg, const char * const lcd_msg) {
-#if STM32_LJ
-#else
   static bool killed =false;
   if (IsRunning()) {
     SERIAL_ERROR_START();
@@ -586,7 +585,7 @@ void Temperature::_temp_error(const int8_t e, const char * const serial_msg, con
     if (e >= 0) SERIAL_ERRORLN((int)e); else SERIAL_ERRORLNPGM(MSG_HEATER_BED);
   }
   #if DISABLED(BOGUS_TEMPERATURE_FAILSAFE_OVERRIDE)
-    static bool killed = false;
+  //  static bool killed = false;
     if (!killed) {
       Running = false;
       killed = true;
@@ -595,7 +594,6 @@ void Temperature::_temp_error(const int8_t e, const char * const serial_msg, con
     else
       disable_all_heaters(); // paranoia
   #endif
-#endif  
 }
 
 void Temperature::max_temp_error(const int8_t e) {
@@ -906,20 +904,33 @@ void Temperature::manage_heater() {
 
   void Temperature::Temperature_Handler(void)
   {
-  //////////////board temperature control
-    static int k=0,board_fan_old=0;
-	int board_fan=0;
+  //////////////board temperature control stm32_LJ
+    static int k=0,board_fan_old=0,nozzel_fan_old=0;
+	int temp_fan=0;
 	k++;
     if(k>1000*5)
     {
     	k=0;
     	Get_Temperature(3);
-		board_fan=gt[3]>65.0?1:0;
-		if(board_fan_old!=board_fan)
+		temp_fan=gt[3]>40.0?1:0;
+		if(gt[3])
 		{
-			board_fan_old=board_fan;
-			OUT_WRITE(FAN3_PIN,board_fan);
+			if(board_fan_old!=temp_fan)
+			{
+				board_fan_old=temp_fan;
+				OUT_WRITE(FAN4_PIN,temp_fan);
+			}
 		}
+		if(gt[0])
+		{
+			temp_fan=gt[0]>100.0?1:0;
+			if(nozzel_fan_old!=temp_fan)
+			{
+				nozzel_fan_old=temp_fan;
+				OUT_WRITE(FAN3_PIN,temp_fan);
+			}
+		}
+
     }
  ///////////////////
   }
@@ -931,6 +942,7 @@ void Temperature::manage_heater() {
 ***Output: 
 ***Return:robert
 ***********************************************************/
+
 float Temperature::Get_Temperature(u8 hot_heat_num)
 {
     int j=0;
@@ -1067,7 +1079,7 @@ float Temperature::analog2temp(const int raw, const uint8_t e) {
   // Derived from RepRap FiveD extruder::getTemperature()
   // For bed temperature measurement.
   float Temperature::analog2tempBed(const int raw) {
-    Get_Temperature(3);//board tmep
+     
    return   Get_Temperature(2);
     #if ENABLED(HEATER_BED_USES_THERMISTOR)
       SCAN_THERMISTOR_TABLE(BEDTEMPTABLE, BEDTEMPTABLE_LEN);
@@ -1246,6 +1258,7 @@ void Temperature::init() {
   HAL_adc_init();
  // HAL_ANALOG_SELECT(TEMP_2_PIN);
   //HAL_START_ADC(TEMP_2_PIN);
+  HAL_ANALOG_SELECT(TEMP_BOARD_PIN);
 
   #if HAS_TEMP_ADC_0
     HAL_ANALOG_SELECT(TEMP_0_PIN);
@@ -1368,7 +1381,7 @@ void Temperature::init() {
     //robert   TEMP_MIN_ROUTINE(1);
     #endif
     #ifdef HEATER_1_MAXTEMP
-      TEMP_MAX_ROUTINE(1);
+    //robert TEMP_MAX_ROUTINE(1);
     #endif
     #if HOTENDS > 2
       #ifdef HEATER_2_MINTEMP
@@ -1910,8 +1923,9 @@ void Temperature::readings_ready() {
         target_temperature_bed
       #endif
     ;
-    if (current_temperature_bed_raw GEBED bed_maxttemp_raw && bed_on) max_temp_error(-1);
-    if (bed_minttemp_raw GEBED current_temperature_bed_raw && bed_on) min_temp_error(-1);
+    if (current_temperature_bed_raw GEBED bed_maxttemp_raw && bed_on&&current_temperature_bed_raw)
+    	max_temp_error(-1);
+    if (bed_minttemp_raw GEBED current_temperature_bed_raw && bed_on&&bed_minttemp_raw) min_temp_error(-1);
   #endif
 }
 
